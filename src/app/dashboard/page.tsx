@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { CategoryBars, DailyHoursChart } from "@/components/Charts";
+import { CategoryBars } from "@/components/Charts";
+import { DailyHoursChart } from "@/components/DailyHoursChart";
 import { Badge, EmptyState, PageHeader, StatBlock } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { requireManager } from "@/lib/guard";

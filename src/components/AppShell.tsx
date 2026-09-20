@@ -31,13 +31,15 @@ export function AppShell({
       <header className="sticky top-0 z-30 border-b border-[var(--color-border-1)] bg-white/90 backdrop-blur shadow-[var(--shadow-xs)]">
         <div className="rc-container flex h-[72px] items-center justify-between gap-8">
           <Link href="/" className="flex shrink-0 items-center" aria-label="Marketing Desk home">
+            {/* 225x32 is the asset's true 7.045:1 ratio. Declaring the real
+                ratio keeps next/image from warning and stops the lockup
+                being distorted if the CSS ever changes. */}
             <Image
               src="/brand/right-click-lockup.png"
               alt="Right Click"
-              width={150}
+              width={225}
               height={32}
               priority
-              className="h-8 w-auto"
             />
           </Link>
 

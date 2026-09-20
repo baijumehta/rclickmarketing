@@ -24,13 +24,14 @@ export default async function LoginPage({
   return (
     <div className="rc-navy grid min-h-screen place-items-center px-6 py-16">
       <div className="w-full max-w-[440px]">
+        {/* 184x36 is the reversed lockup's true 5.113:1 ratio. */}
         <Image
           src="/brand/right-click-lockup-white.png"
           alt="Right Click"
-          width={180}
-          height={38}
+          width={184}
+          height={36}
           priority
-          className="mb-10 h-9 w-auto"
+          className="mb-10"
         />
 
         <div className="rc-card p-8">
