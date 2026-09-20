@@ -35,10 +35,10 @@ Built on Next.js 15, Prisma, Neon Postgres and Entra ID SSO, styled from the sha
 
 ```bash
 npm install
-cp .env.example .env
 ```
 
-Fill in `.env`, then:
+Secrets go in **`.env.local`** (gitignored). `.env.example` is the annotated template — copy it
+if the file is missing. Fill in the Neon and Entra values, then:
 
 ```bash
 npm run db:migrate
@@ -46,9 +46,13 @@ npm run db:seed
 npm run dev
 ```
 
-Set `DEV_LOGIN="true"` in `.env` to sign in with just an email address and skip Entra while
-developing. It is ignored whenever `NODE_ENV` is production, so it cannot leak to the
-deployment.
+> **Why the `db:*` scripts wrap `dotenv`:** Next.js reads `.env.local` natively, but the Prisma
+> CLI does not — it only looks at `.env`. Without the wrapper, `prisma migrate` reports a
+> missing `DATABASE_URL` while the app itself works fine. Run Prisma through `npm run db:*`
+> rather than calling `npx prisma` directly, or it will not see your connection string.
+
+Set `DEV_LOGIN="true"` to sign in with just an email address and skip Entra while developing.
+It is ignored whenever `NODE_ENV` is production, so it cannot leak to the deployment.
 
 `npm run db:seed` loads seven categories and eight recurring marketing tasks as a starting
 point — the monthly SEO check, the weekly spend review, the monthly report, and so on.
