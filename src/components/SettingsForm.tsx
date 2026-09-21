@@ -4,13 +4,16 @@ import { useActionState, useState, useTransition } from "react";
 import { saveSettings, sendTestPost, type SettingsState } from "@/actions/settings";
 
 export function SettingsForm({
-  webhookUrl,
+  webhookConfigured,
+  webhookHost,
   payloadFormat,
   formats,
   workdayHours,
   autoPost,
 }: {
-  webhookUrl: string;
+  webhookConfigured: boolean;
+  /** Host only. The full URL carries a signature and is never sent to the browser. */
+  webhookHost: string | null;
   payloadFormat: string;
   formats: Record<string, string>;
   workdayHours: number;
@@ -24,27 +27,30 @@ export function SettingsForm({
     <form action={formAction} className="rc-card p-6">
       <p className="t-label">Teams</p>
 
+      {/* Read-only. The URL is a credential and lives in TEAMS_WEBHOOK_URL,
+          so there is nothing to edit here — but "is it set, and where does it
+          point" is the first question when a post fails. */}
       <div className="mb-6">
-        <label className="rc-field-label" htmlFor="teamsWebhookUrl">
-          Incoming webhook URL
-        </label>
-        <input
-          id="teamsWebhookUrl"
-          name="teamsWebhookUrl"
-          type="url"
-          defaultValue={webhookUrl}
-          className="rc-input font-mono text-[13px]"
-          placeholder="https://prod-00.westus.logic.azure.com/workflows/..."
-        />
+        <span className="rc-field-label">Webhook</span>
+        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-1)] bg-[var(--color-gray-50)] px-4 py-3">
+          {webhookConfigured ? (
+            <>
+              <span className="rc-badge rc-badge-success rc-badge-sm">Configured</span>
+              <code className="font-mono text-[13px] text-[var(--color-fg-2)]">
+                {webhookHost}
+              </code>
+            </>
+          ) : (
+            <>
+              <span className="rc-badge rc-badge-danger rc-badge-sm">Not set</span>
+              <span className="t-caption">Nothing will be posted.</span>
+            </>
+          )}
+        </div>
         <p className="rc-hint">
-          <strong>Channel:</strong> open it in Teams, ⋯ &rarr; Workflows &rarr; &ldquo;Post to a
-          channel when a webhook request is received&rdquo;.
-          <br />
-          <strong>Group chat:</strong> a chat cannot have an incoming webhook, so use Power
-          Automate &mdash; ⋯ on the chat &rarr; Workflows &rarr; &ldquo;Post to a chat when a
-          webhook request is received&rdquo;.
-          <br />
-          Either way, paste the URL the flow gives you.
+          Set by the <code>TEAMS_WEBHOOK_URL</code> environment variable. The full URL ends in a
+          signature that acts as a password, so it is not shown or editable here — change it in
+          the environment and redeploy.
         </p>
       </div>
 
@@ -155,7 +161,9 @@ export function SettingsForm({
           {testing ? "Sending…" : "Send a test message"}
         </button>
       </div>
-      <p className="rc-hint">Save first — the test uses the saved webhook, not what is typed.</p>
+      <p className="rc-hint">
+        Save the message format first — the test posts with whatever is saved.
+      </p>
     </form>
   );
 }

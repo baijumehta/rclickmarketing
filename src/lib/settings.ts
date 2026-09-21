@@ -6,7 +6,6 @@ import { prisma } from "@/lib/db";
  * working on a fresh database.
  */
 export const SETTING_KEYS = {
-  teamsWebhookUrl: "teams.webhookUrl",
   teamsPayloadFormat: "teams.payloadFormat",
   workdayMinutes: "workday.minutes",
   autoPostEnabled: "summary.autoPost",
@@ -45,9 +44,16 @@ export async function setSetting(key: SettingKey, value: string): Promise<void> 
   });
 }
 
-export async function getTeamsWebhookUrl(): Promise<string | null> {
-  const stored = await getSetting(SETTING_KEYS.teamsWebhookUrl);
-  return stored?.trim() || process.env.TEAMS_WEBHOOK_URL?.trim() || null;
+/**
+ * The webhook lives in the environment only, deliberately — one place to look
+ * when it is wrong, and the URL is a credential, so it belongs with the other
+ * secrets rather than in a database row.
+ *
+ * The trade-off: changing it means editing the environment variable and
+ * redeploying. There is no way to change it from inside the app.
+ */
+export function getTeamsWebhookUrl(): string | null {
+  return process.env.TEAMS_WEBHOOK_URL?.trim() || null;
 }
 
 export async function getTeamsPayloadFormat(): Promise<PayloadFormat> {

@@ -15,11 +15,6 @@ export async function saveSettings(
 ): Promise<SettingsState> {
   await requireManager();
 
-  const webhook = String(formData.get("teamsWebhookUrl") ?? "").trim();
-  if (webhook && !/^https:\/\//i.test(webhook)) {
-    return { error: "The webhook must be an https URL copied from Teams." };
-  }
-
   const hours = Number(formData.get("workdayHours"));
   if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
     return { error: "Set the working day to a number of hours between 1 and 24." };
@@ -33,7 +28,6 @@ export async function saveSettings(
   }
 
   await Promise.all([
-    setSetting(SETTING_KEYS.teamsWebhookUrl, webhook),
     setSetting(SETTING_KEYS.teamsPayloadFormat, formatRaw),
     setSetting(SETTING_KEYS.workdayMinutes, String(Math.round(hours * 60))),
     setSetting(SETTING_KEYS.autoPostEnabled, String(autoPost)),

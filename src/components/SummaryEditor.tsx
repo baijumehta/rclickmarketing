@@ -124,7 +124,7 @@ export function SummaryEditor({
 
         {!webhookConfigured ? (
           <p className="rc-hint rc-hint-error mt-3">
-            No Teams webhook is set up yet. A manager can add one on the Settings page.
+            No Teams webhook is configured. Set TEAMS_WEBHOOK_URL in the environment and redeploy.
           </p>
         ) : null}
       </form>
