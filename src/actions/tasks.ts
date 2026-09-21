@@ -189,6 +189,56 @@ export async function setOccurrenceStatus(
   revalidatePath(`/tasks/${occurrence.taskId}`);
 }
 
+/**
+ * Block a piece of work, with the reason attached. A blocked task with no
+ * stated reason is the thing this whole app exists to stop — in a month
+ * nobody remembers what it was waiting on.
+ */
+export async function blockOccurrence(occurrenceId: string, reason: string): Promise<void> {
+  await requireUser();
+
+  const timer = await prisma.activeTimer.findUnique({ where: { occurrenceId } });
+  if (timer) await stopTimerInternal(timer.userId);
+
+  const occurrence = await prisma.taskOccurrence.update({
+    where: { id: occurrenceId },
+    data: {
+      status: "BLOCKED",
+      notes: reason.trim() || null,
+      completedAt: null,
+      completedById: null,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/summary");
+  revalidatePath(`/tasks/${occurrence.taskId}`);
+}
+
+/**
+ * Clear a block. The resolution is kept on the occurrence rather than thrown
+ * away, so the task history says how it got unstuck.
+ */
+export async function unblockOccurrence(
+  occurrenceId: string,
+  resolution: string,
+): Promise<void> {
+  await requireUser();
+
+  const trimmed = resolution.trim();
+  const occurrence = await prisma.taskOccurrence.update({
+    where: { id: occurrenceId },
+    data: {
+      status: "IN_PROGRESS",
+      notes: trimmed ? `Unblocked: ${trimmed}` : null,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/summary");
+  revalidatePath(`/tasks/${occurrence.taskId}`);
+}
+
 export async function setOccurrencePriority(
   occurrenceId: string,
   priority: Priority | null,

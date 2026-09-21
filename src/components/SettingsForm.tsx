@@ -4,18 +4,9 @@ import { useActionState, useState, useTransition } from "react";
 import { saveSettings, sendTestPost, type SettingsState } from "@/actions/settings";
 
 export function SettingsForm({
-  webhookConfigured,
-  webhookHost,
-  payloadFormat,
-  formats,
   workdayHours,
   autoPost,
 }: {
-  webhookConfigured: boolean;
-  /** Host only. The full URL carries a signature and is never sent to the browser. */
-  webhookHost: string | null;
-  payloadFormat: string;
-  formats: Record<string, string>;
   workdayHours: number;
   autoPost: boolean;
 }) {
@@ -25,57 +16,7 @@ export function SettingsForm({
 
   return (
     <form action={formAction} className="rc-card p-6">
-      <p className="t-label">Teams</p>
-
-      {/* Read-only. The URL is a credential and lives in TEAMS_WEBHOOK_URL,
-          so there is nothing to edit here — but "is it set, and where does it
-          point" is the first question when a post fails. */}
-      <div className="mb-6">
-        <span className="rc-field-label">Webhook</span>
-        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-1)] bg-[var(--color-gray-50)] px-4 py-3">
-          {webhookConfigured ? (
-            <>
-              <span className="rc-badge rc-badge-success rc-badge-sm">Configured</span>
-              <code className="font-mono text-[13px] text-[var(--color-fg-2)]">
-                {webhookHost}
-              </code>
-            </>
-          ) : (
-            <>
-              <span className="rc-badge rc-badge-danger rc-badge-sm">Not set</span>
-              <span className="t-caption">Nothing will be posted.</span>
-            </>
-          )}
-        </div>
-        <p className="rc-hint">
-          Set by the <code>TEAMS_WEBHOOK_URL</code> environment variable. The full URL ends in a
-          signature that acts as a password, so it is not shown or editable here — change it in
-          the environment and redeploy.
-        </p>
-      </div>
-
-      <div className="mb-6">
-        <label className="rc-field-label" htmlFor="payloadFormat">
-          Message format
-        </label>
-        <select
-          id="payloadFormat"
-          name="payloadFormat"
-          defaultValue={payloadFormat}
-          className="rc-select"
-        >
-          {Object.entries(formats).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <p className="rc-hint">
-          Leave on detect unless the test fails. The Workflows templates want an Adaptive Card;
-          a flow you built yourself with your own schema usually wants the simple one. A 400 back
-          from Teams means the format is wrong, not the URL.
-        </p>
-      </div>
+      <p className="t-label">Daily summary</p>
 
       <div className="mb-6">
         <label className="flex items-start gap-3">
@@ -162,7 +103,7 @@ export function SettingsForm({
         </button>
       </div>
       <p className="rc-hint">
-        Save the message format first — the test posts with whatever is saved.
+        Sends a short message through the Power Automate flow, to check the path still works.
       </p>
     </form>
   );

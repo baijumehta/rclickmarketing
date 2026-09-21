@@ -37,8 +37,13 @@ export async function composeDailySummary(
   const done = board.done.filter((o) => o.status === "DONE");
   const skipped = board.done.filter((o) => o.status === "SKIPPED");
 
-  // Work that got time today but is not finished.
-  const touched = [...board.overdue, ...board.today].filter((o) => o.minutesToday > 0);
+  // Every open occurrence, including ones due later — working ahead is normal,
+  // and time logged against a future due date still has to be itemised or the
+  // header total will not match the list beneath it.
+  const open = [...board.overdue, ...board.today, ...board.upcoming];
+
+  const blocked = open.filter((o) => o.status === "BLOCKED");
+  const touched = open.filter((o) => o.minutesToday > 0 && o.status !== "BLOCKED");
   const untouched = [...board.overdue, ...board.today].filter((o) => o.minutesToday === 0);
 
   sections.push(
@@ -52,6 +57,20 @@ export async function composeDailySummary(
   if (touched.length) {
     sections.push(
       ["**In progress**", ...touched.sort(sortBoard).map((o) => line(o, true))].join("\n"),
+    );
+  }
+
+  // Called out separately from "in progress". Something stuck behind someone
+  // else is the other way work quietly disappears, and it usually needs a
+  // reader of this message to unblock it.
+  if (blocked.length) {
+    sections.push(
+      [
+        "**Blocked**",
+        ...blocked
+          .sort(sortBoard)
+          .map((o) => `${line(o, true)}${o.notes ? ` — ${o.notes}` : ""}`),
+      ].join("\n"),
     );
   }
 
@@ -73,7 +92,7 @@ export async function composeDailySummary(
     );
   }
 
-  if (!done.length && !touched.length && !skipped.length) {
+  if (!done.length && !touched.length && !skipped.length && !blocked.length) {
     sections.push("_Nothing logged today._");
   }
 

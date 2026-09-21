@@ -16,6 +16,7 @@ export function toRow(
     title: o.task.title,
     description: o.task.description,
     status: o.status,
+    notes: o.notes,
     priority: o.effectivePriority,
     categoryName: o.task.category?.name ?? null,
     categoryColor: o.task.category?.color ?? null,

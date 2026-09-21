@@ -13,7 +13,8 @@
     "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "check": "tsx scripts/check-logic.ts",
-    "teams:payload": "tsx scripts/teams-payload.ts"
+    "teams:payload": "tsx scripts/teams-payload.ts",
+    "demo:day": "dotenv -e .env.local -- tsx scripts/demo-day.ts"
   },
   "prisma": {
     "seed": "dotenv -e .env.local -- tsx prisma/seed.ts"

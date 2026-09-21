@@ -6,13 +6,7 @@ import { Badge, PageHeader } from "@/components/ui";
 import { deleteCategory, setUserRole } from "@/actions/settings";
 import { prisma } from "@/lib/db";
 import { requireManager } from "@/lib/guard";
-import {
-  PAYLOAD_FORMATS,
-  getAutoPostEnabled,
-  getTeamsPayloadFormat,
-  getTeamsWebhookUrl,
-  getWorkdayMinutes,
-} from "@/lib/settings";
+import { getAutoPostEnabled, getWorkdayMinutes } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
@@ -20,9 +14,7 @@ export const metadata = { title: "Settings" };
 export default async function SettingsPage() {
   const user = await requireManager();
 
-  const [webhook, payloadFormat, workdayMinutes, autoPost, categories, users] = await Promise.all([
-    getTeamsWebhookUrl(),
-    getTeamsPayloadFormat(),
+  const [workdayMinutes, autoPost, categories, users] = await Promise.all([
     getWorkdayMinutes(),
     getAutoPostEnabled(),
     prisma.category.findMany({
@@ -34,16 +26,6 @@ export default async function SettingsPage() {
 
   const suggested = CATEGORY_PALETTE[categories.length % CATEGORY_PALETTE.length];
 
-  // Host only — the query string holds the signature that authorises posting.
-  let webhookHost: string | null = null;
-  if (webhook) {
-    try {
-      webhookHost = new URL(webhook).host;
-    } catch {
-      webhookHost = "unreadable URL";
-    }
-  }
-
   return (
     <AppShell user={user}>
       <PageHeader
@@ -53,10 +35,6 @@ export default async function SettingsPage() {
 
       <div className="grid gap-8 lg:grid-cols-2">
         <SettingsForm
-          webhookConfigured={Boolean(webhook)}
-          webhookHost={webhookHost}
-          payloadFormat={payloadFormat}
-          formats={PAYLOAD_FORMATS}
           workdayHours={workdayMinutes / 60}
           autoPost={autoPost}
         />

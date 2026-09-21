@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import type { OccurrenceStatus, Priority } from "@prisma/client";
 import { LiveTimer } from "@/components/LiveTimer";
 import { PriorityBadge, StatusBadge } from "@/components/ui";
-import { setOccurrenceStatus } from "@/actions/tasks";
+import { blockOccurrence, setOccurrenceStatus, unblockOccurrence } from "@/actions/tasks";
 import { logTime, startTimer, stopTimer } from "@/actions/time";
 import { parseDurationInput } from "@/lib/dates";
 
@@ -15,6 +15,8 @@ export type RowData = {
   title: string;
   description: string | null;
   status: OccurrenceStatus;
+  /** Why it is blocked, or how it got unblocked. */
+  notes: string | null;
   priority: Priority;
   categoryName: string | null;
   categoryColor: string | null;
@@ -37,8 +39,13 @@ export function TaskRow({ row, dimmed = false }: { row: RowData; dimmed?: boolea
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // "why" when blocking, "how" when unblocking — same box, different prompt.
+  const [reasonOpen, setReasonOpen] = useState<null | "block" | "unblock">(null);
+  const [reason, setReason] = useState("");
+
   const running = row.timerStartedAt !== null;
   const closed = row.status === "DONE" || row.status === "SKIPPED";
+  const blocked = row.status === "BLOCKED";
 
   function run(fn: () => Promise<unknown>) {
     setError(null);
@@ -72,6 +79,21 @@ export function TaskRow({ row, dimmed = false }: { row: RowData; dimmed?: boolea
       setDuration("");
       setNote("");
       setLogOpen(false);
+    });
+  }
+
+  function submitReason() {
+    const mode = reasonOpen;
+    if (!mode) return;
+    if (mode === "block" && !reason.trim()) {
+      setError("Say what it is waiting on — that is the whole point of flagging it.");
+      return;
+    }
+    run(async () => {
+      if (mode === "block") await blockOccurrence(row.id, reason);
+      else await unblockOccurrence(row.id, reason);
+      setReason("");
+      setReasonOpen(null);
     });
   }
 
@@ -133,6 +155,18 @@ export function TaskRow({ row, dimmed = false }: { row: RowData; dimmed?: boolea
               <span className="t-caption num">{row.totalMinutes} total</span>
             ) : null}
           </div>
+
+          {row.notes ? (
+            <p
+              className={`t-caption mt-2 rounded-[var(--radius-xs)] px-2 py-1 ${
+                blocked
+                  ? "bg-[#fbeaea] font-semibold text-[var(--color-danger)]"
+                  : "bg-[var(--color-gray-50)]"
+              }`}
+            >
+              {blocked ? `Waiting on: ${row.notes}` : row.notes}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -258,16 +292,85 @@ export function TaskRow({ row, dimmed = false }: { row: RowData; dimmed?: boolea
         </div>
       ) : null}
 
-      {!closed && row.status !== "BLOCKED" ? (
+      {reasonOpen ? (
+        <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-border-1)] bg-[var(--color-gray-50)] p-4">
+          <label className="rc-field-label" htmlFor={`reason-${row.id}`}>
+            {reasonOpen === "block" ? "What is it waiting on?" : "What unblocked it?"}
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              id={`reason-${row.id}`}
+              className="rc-input min-w-[240px] flex-1"
+              value={reason}
+              autoFocus
+              placeholder={
+                reasonOpen === "block"
+                  ? "Waiting on Bhadresh for GTM access"
+                  : "Got the credentials, carrying on"
+              }
+              onChange={(e) => setReason(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitReason();
+                }
+              }}
+            />
+            <button
+              type="button"
+              disabled={pending}
+              onClick={submitReason}
+              className="rc-btn rc-btn-primary"
+            >
+              {reasonOpen === "block" ? "Mark blocked" : "Unblock"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setReasonOpen(null);
+                setReason("");
+                setError(null);
+              }}
+              className="rc-btn rc-btn-ghost"
+            >
+              Cancel
+            </button>
+          </div>
+          <p className="rc-hint">
+            {reasonOpen === "block"
+              ? "Shows on the board and in the end-of-day summary, so somebody can clear it."
+              : "Optional. Kept on the task history."}
+          </p>
+        </div>
+      ) : null}
+
+      {!closed && !reasonOpen ? (
         <div className="mt-3 flex gap-4">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => run(() => setOccurrenceStatus(row.id, "BLOCKED"))}
-            className="t-caption underline decoration-dotted hover:text-[var(--color-fg-1)]"
-          >
-            Blocked
-          </button>
+          {blocked ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setReason("");
+                setReasonOpen("unblock");
+              }}
+              className="t-caption font-semibold text-[var(--color-success)] underline decoration-dotted"
+            >
+              Unblock
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setReason("");
+                setReasonOpen("block");
+              }}
+              className="t-caption underline decoration-dotted hover:text-[var(--color-fg-1)]"
+            >
+              Blocked
+            </button>
+          )}
           <button
             type="button"
             disabled={pending}

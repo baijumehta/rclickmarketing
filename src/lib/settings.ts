@@ -6,7 +6,6 @@ import { prisma } from "@/lib/db";
  * working on a fresh database.
  */
 export const SETTING_KEYS = {
-  teamsPayloadFormat: "teams.payloadFormat",
   workdayMinutes: "workday.minutes",
   autoPostEnabled: "summary.autoPost",
 } as const;
@@ -56,9 +55,16 @@ export function getTeamsWebhookUrl(): string | null {
   return process.env.TEAMS_WEBHOOK_URL?.trim() || null;
 }
 
-export async function getTeamsPayloadFormat(): Promise<PayloadFormat> {
-  const stored = (await getSetting(SETTING_KEYS.teamsPayloadFormat))?.trim() ?? "";
-  return isPayloadFormat(stored) ? stored : "auto";
+/**
+ * Read from the environment, not the database, and deliberately not editable
+ * in the app. It has to match how the receiving flow was built, so the only
+ * thing a wrong value produces is a silent 400 at the end of the day. It was
+ * a dropdown once; saving the settings form with the default selected was
+ * enough to break posting.
+ */
+export function getTeamsPayloadFormat(): PayloadFormat {
+  const raw = process.env.TEAMS_PAYLOAD_FORMAT?.trim() ?? "";
+  return isPayloadFormat(raw) ? raw : "auto";
 }
 
 /** The target length of a working day, in minutes. Defaults to eight hours. */
