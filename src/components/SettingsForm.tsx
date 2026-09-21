@@ -5,10 +5,14 @@ import { saveSettings, sendTestPost, type SettingsState } from "@/actions/settin
 
 export function SettingsForm({
   webhookUrl,
+  payloadFormat,
+  formats,
   workdayHours,
   autoPost,
 }: {
   webhookUrl: string;
+  payloadFormat: string;
+  formats: Record<string, string>;
   workdayHours: number;
   autoPost: boolean;
 }) {
@@ -33,9 +37,37 @@ export function SettingsForm({
           placeholder="https://prod-00.westus.logic.azure.com/workflows/..."
         />
         <p className="rc-hint">
-          In Teams: open the channel, ⋯ &rarr; Workflows &rarr; &ldquo;Post to a channel when a
-          webhook request is received&rdquo;, then paste the URL it gives you. Old-style Office 365
-          connector URLs also work.
+          <strong>Channel:</strong> open it in Teams, ⋯ &rarr; Workflows &rarr; &ldquo;Post to a
+          channel when a webhook request is received&rdquo;.
+          <br />
+          <strong>Group chat:</strong> a chat cannot have an incoming webhook, so use Power
+          Automate &mdash; ⋯ on the chat &rarr; Workflows &rarr; &ldquo;Post to a chat when a
+          webhook request is received&rdquo;.
+          <br />
+          Either way, paste the URL the flow gives you.
+        </p>
+      </div>
+
+      <div className="mb-6">
+        <label className="rc-field-label" htmlFor="payloadFormat">
+          Message format
+        </label>
+        <select
+          id="payloadFormat"
+          name="payloadFormat"
+          defaultValue={payloadFormat}
+          className="rc-select"
+        >
+          {Object.entries(formats).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <p className="rc-hint">
+          Leave on detect unless the test fails. The Workflows templates want an Adaptive Card;
+          a flow you built yourself with your own schema usually wants the simple one. A 400 back
+          from Teams means the format is wrong, not the URL.
         </p>
       </div>
 

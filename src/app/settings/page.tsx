@@ -6,7 +6,13 @@ import { Badge, PageHeader } from "@/components/ui";
 import { deleteCategory, setUserRole } from "@/actions/settings";
 import { prisma } from "@/lib/db";
 import { requireManager } from "@/lib/guard";
-import { getAutoPostEnabled, getTeamsWebhookUrl, getWorkdayMinutes } from "@/lib/settings";
+import {
+  PAYLOAD_FORMATS,
+  getAutoPostEnabled,
+  getTeamsPayloadFormat,
+  getTeamsWebhookUrl,
+  getWorkdayMinutes,
+} from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
@@ -14,8 +20,9 @@ export const metadata = { title: "Settings" };
 export default async function SettingsPage() {
   const user = await requireManager();
 
-  const [webhook, workdayMinutes, autoPost, categories, users] = await Promise.all([
+  const [webhook, payloadFormat, workdayMinutes, autoPost, categories, users] = await Promise.all([
     getTeamsWebhookUrl(),
+    getTeamsPayloadFormat(),
     getWorkdayMinutes(),
     getAutoPostEnabled(),
     prisma.category.findMany({
@@ -37,6 +44,8 @@ export default async function SettingsPage() {
       <div className="grid gap-8 lg:grid-cols-2">
         <SettingsForm
           webhookUrl={webhook ?? ""}
+          payloadFormat={payloadFormat}
+          formats={PAYLOAD_FORMATS}
           workdayHours={workdayMinutes / 60}
           autoPost={autoPost}
         />

@@ -12,7 +12,8 @@
     "db:deploy": "dotenv -e .env.local -- prisma migrate deploy",
     "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
     "db:studio": "dotenv -e .env.local -- prisma studio",
-    "check": "tsx scripts/check-logic.ts"
+    "check": "tsx scripts/check-logic.ts",
+    "teams:payload": "tsx scripts/teams-payload.ts"
   },
   "prisma": {
     "seed": "dotenv -e .env.local -- tsx prisma/seed.ts"

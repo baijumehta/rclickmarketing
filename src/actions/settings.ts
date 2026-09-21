@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireManager } from "@/lib/guard";
-import { SETTING_KEYS, setSetting } from "@/lib/settings";
+import { SETTING_KEYS, isPayloadFormat, setSetting } from "@/lib/settings";
 import { postToTeams } from "@/lib/teams";
 import type { Role } from "@prisma/client";
 
@@ -27,8 +27,14 @@ export async function saveSettings(
 
   const autoPost = formData.get("autoPost") === "on";
 
+  const formatRaw = String(formData.get("payloadFormat") ?? "auto");
+  if (!isPayloadFormat(formatRaw)) {
+    return { error: "Pick one of the listed message formats." };
+  }
+
   await Promise.all([
     setSetting(SETTING_KEYS.teamsWebhookUrl, webhook),
+    setSetting(SETTING_KEYS.teamsPayloadFormat, formatRaw),
     setSetting(SETTING_KEYS.workdayMinutes, String(Math.round(hours * 60))),
     setSetting(SETTING_KEYS.autoPostEnabled, String(autoPost)),
   ]);
