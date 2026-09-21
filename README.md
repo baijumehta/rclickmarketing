@@ -100,8 +100,26 @@ Anyone in the tenant who signs in gets the **Marketing** role. Emails listed in
 
 ### 3. Vercel
 
-Import the repo, add every variable from `.env.example` as a project environment variable,
-and deploy. `AUTH_URL` must be the real deployment URL.
+Import the repo, then set **every** variable from `.env.example` as a project environment
+variable. `AUTH_URL` must be the real deployment URL, not localhost.
+
+Filling in `.env.local` configures your machine only — that file is gitignored and never
+reaches Vercel. Missing variables show up as a 500 from `/api/auth/csrf` and a
+"Sign-in is not configured yet" message on the login page.
+
+Three ways to set them, fastest first:
+
+1. **Paste a .env file.** Vercel's Environment Variables screen accepts pasted `.env`
+   content — paste the whole file at once instead of filling in 13 separate rows.
+2. **PowerShell:** `.\scripts\push-vercel-env.ps1` (add `-WhatIfOnly` to preview, or
+   `-Target preview` for the preview environment).
+3. **bash / macOS / CI:** `bash scripts/push-vercel-env.sh`.
+
+Both scripts read `.env.vercel.local` and need `npm i -g vercel && vercel link` first.
+
+> **Redeploy afterwards.** Vercel applies environment variables at build time, so adding
+> them does nothing to the deployment already serving traffic. Run `vercel --prod`, or push
+> a commit.
 
 `vercel.json` registers two cron jobs. Vercel sends `Authorization: Bearer $CRON_SECRET`
 automatically, which is exactly what `/api/cron` checks.
