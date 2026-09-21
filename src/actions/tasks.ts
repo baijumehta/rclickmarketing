@@ -23,7 +23,13 @@ const TaskSchema = z.object({
   assigneeId: z.string().trim().optional().or(z.literal("")),
 });
 
-export type ActionState = { error?: string; ok?: boolean };
+export type ActionState = {
+  error?: string;
+  ok?: boolean;
+  /** Set when a task was created and the form stayed put to accept another. */
+  createdId?: string;
+  createdTitle?: string;
+};
 
 function readForm(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
@@ -81,6 +87,13 @@ export async function createTask(_prev: ActionState, formData: FormData): Promis
 
   revalidatePath("/");
   revalidatePath("/backlog");
+
+  // The "and another" button submits its own name, so the form can stay open
+  // for the next one instead of bouncing through the task page each time.
+  if (formData.get("andAnother") === "1") {
+    return { ok: true, createdId: task.id, createdTitle: task.title };
+  }
+
   redirect(`/tasks/${task.id}`);
 }
 
@@ -118,17 +131,31 @@ export async function updateTask(
     },
   });
 
-  // The rule may have changed. Drop untouched future occurrences and rebuild,
-  // leaving anything already worked on or closed exactly as it is.
+  // The schedule may have changed, so drop every untouched open occurrence
+  // and rebuild from the new rule.
+  //
+  // This deliberately includes occurrences due today or earlier. Restricting
+  // it to future dates left the already-materialised one sitting on today's
+  // board after the start date was pushed out, which looked like the change
+  // had not saved.
+  //
+  // "Untouched" is the safeguard: anything with logged time, or any status
+  // other than OPEN, represents real work and is left exactly as it is.
   await prisma.taskOccurrence.deleteMany({
-    where: {
-      taskId,
-      status: "OPEN",
-      dueDate: { gt: businessToday() },
-      timeEntries: { none: {} },
-    },
+    where: { taskId, status: "OPEN", timeEntries: { none: {} } },
   });
-  await ensureOccurrences();
+
+  if (d.cadence === "NONE") {
+    // A one-off has no rule for the generator to follow, so its single
+    // occurrence is placed here. Without this, changing a one-off's due date
+    // changed nothing at all.
+    const remaining = await prisma.taskOccurrence.count({ where: { taskId } });
+    if (remaining === 0) {
+      await prisma.taskOccurrence.create({ data: { taskId, dueDate: startDate } });
+    }
+  } else {
+    await ensureOccurrences();
+  }
 
   revalidatePath("/");
   revalidatePath("/backlog");

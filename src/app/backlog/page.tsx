@@ -13,6 +13,42 @@ export const metadata = { title: "Backlog" };
 
 type Search = { view?: string; category?: string; q?: string };
 
+/**
+ * An estimate normalised to minutes per week, so tasks on different cadences
+ * can be added up. One-offs contribute nothing: they are not standing load.
+ */
+function weeklyMinutes(task: { cadence: string; interval: number; estimateMinutes: number | null }) {
+  const est = task.estimateMinutes ?? 0;
+  if (!est) return 0;
+  const every = Math.max(1, task.interval);
+
+  switch (task.cadence) {
+    case "DAILY":
+      return (est * 7) / every;
+    case "WEEKDAILY":
+      return est * 5;
+    case "WEEKLY":
+      return est / every;
+    case "BIWEEKLY":
+      return est / (2 * every);
+    case "MONTHLY":
+      return est / (4.345 * every);
+    case "QUARTERLY":
+      return est / (13.04 * every);
+    case "SEMIANNUAL":
+      return est / (26.09 * every);
+    case "ANNUAL":
+      return est / (52.18 * every);
+    default:
+      return 0;
+  }
+}
+
+/** "Today" -> "today", but "Oct 1" and "3 days overdue" are left alone. */
+function lowerFirstWord(label: string): string {
+  return /^(Today|Tomorrow)$/.test(label) ? label.toLowerCase() : label;
+}
+
 const VIEWS = [
   { key: "active", label: "Active" },
   { key: "recurring", label: "Recurring" },
@@ -69,6 +105,9 @@ export default async function BacklogPage({
     const mins = occurrenceTotals.get(o.id) ?? 0;
     if (mins) minutesByTask.set(o.taskId, (minutesByTask.get(o.taskId) ?? 0) + mins);
   }
+
+  const weeklyLoad = tasks.reduce((sum, t) => sum + weeklyMinutes(t), 0);
+  const missingEstimates = tasks.filter((t) => !t.estimateMinutes).length;
 
   const sorted = [...tasks].sort((a, b) => {
     const p = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
@@ -127,6 +166,25 @@ export default async function BacklogPage({
         </button>
       </form>
 
+      {sorted.length > 0 ? (
+        <div className="rc-panel mb-6 flex flex-wrap items-center justify-between gap-4 px-5 py-3">
+          <span className="t-small text-[var(--color-fg-2)]">
+            <strong className="text-[var(--color-fg-1)]">{sorted.length}</strong>{" "}
+            {sorted.length === 1 ? "task" : "tasks"}
+            {missingEstimates > 0 ? (
+              <span className="t-caption"> · {missingEstimates} with no estimate</span>
+            ) : null}
+          </span>
+          <span className="t-small text-[var(--color-fg-2)]">
+            Recurring load{" "}
+            <strong className="num text-[var(--color-fg-1)]">
+              {formatDuration(Math.round(weeklyLoad))}
+            </strong>{" "}
+            a week
+          </span>
+        </div>
+      ) : null}
+
       {sorted.length === 0 ? (
         <EmptyState title="Nothing here yet">
           {view === "archived"
@@ -164,10 +222,16 @@ export default async function BacklogPage({
                           overdue ? "text-[var(--color-danger)]" : ""
                         }`}
                       >
-                        Next {relativeDay(next.dueDate, today).toLowerCase()}
+                        {/* "Today" and "Tomorrow" read better lowercased after
+                            "Next"; a date like "Oct 1" must not be. */}
+                        Next {lowerFirstWord(relativeDay(next.dueDate, today))}
                       </span>
-                    ) : (
+                    ) : task.cadence === "NONE" ? (
                       <span className="t-caption">Nothing scheduled</span>
+                    ) : (
+                      // Occurrences are only materialised two weeks out, so a
+                      // monthly task usually has none yet. That is not a fault.
+                      <span className="t-caption">Due beyond the next two weeks</span>
                     )}
                     {task.category ? (
                       <span className="t-caption inline-flex items-center gap-1.5">
@@ -182,6 +246,18 @@ export default async function BacklogPage({
                     <span className="t-caption">
                       {task.assignee ? (task.assignee.name ?? task.assignee.email) : "Unassigned"}
                     </span>
+
+                    {/* The planned figure. Labelled "per cycle" on anything
+                        recurring, since that is per occurrence, not total. */}
+                    {task.estimateMinutes ? (
+                      <span className="t-caption num">
+                        Est. {formatDuration(task.estimateMinutes)}
+                        {task.cadence === "NONE" ? "" : " per cycle"}
+                      </span>
+                    ) : (
+                      <span className="t-caption text-[var(--color-gray-400)]">No estimate</span>
+                    )}
+
                     {logged > 0 ? (
                       <span className="t-caption num">{formatDuration(logged)} logged</span>
                     ) : null}

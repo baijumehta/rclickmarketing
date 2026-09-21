@@ -170,6 +170,22 @@ export async function ensureOccurrences(horizonDays = HORIZON_DAYS): Promise<num
   const today = businessToday();
   const horizon = addDays(today, horizonDays);
 
+  // A one-off gets its single occurrence when the task is created, so it is
+  // normally none of this function's business. The exception is a one-off
+  // that has lost it — the task would then exist with nothing on any board
+  // and no rule to bring it back. Completed one-offs still have their DONE
+  // occurrence, so they are not matched here.
+  const orphanedOneOffs = await prisma.task.findMany({
+    where: { archivedAt: null, cadence: "NONE", occurrences: { none: {} } },
+    select: { id: true, startDate: true },
+  });
+  if (orphanedOneOffs.length > 0) {
+    await prisma.taskOccurrence.createMany({
+      data: orphanedOneOffs.map((t) => ({ taskId: t.id, dueDate: t.startDate })),
+      skipDuplicates: true,
+    });
+  }
+
   const tasks = await prisma.task.findMany({
     where: { archivedAt: null, cadence: { not: "NONE" } },
     include: {
@@ -189,6 +205,12 @@ export async function ensureOccurrences(horizonDays = HORIZON_DAYS): Promise<num
       ? nextDueAfter(task, last)
       : firstDueOnOrAfter(task, task.startDate > today ? task.startDate : today);
 
+    // Nothing is ever due before the task starts. Stepping on from a surviving
+    // completed occurrence can land earlier than a start date that has since
+    // been pushed out, so the floor is enforced rather than assumed.
+    const floor = dateOnly(task.startDate);
+    if (due.getTime() < floor.getTime()) due = firstDueOnOrAfter(task, floor);
+
     // Bounded so a misconfigured task can never spin here.
     for (let i = 0; i < 400; i++) {
       if (due.getTime() > horizon.getTime()) break;
@@ -200,11 +222,11 @@ export async function ensureOccurrences(horizonDays = HORIZON_DAYS): Promise<num
     }
   }
 
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) return orphanedOneOffs.length;
 
   const result = await prisma.taskOccurrence.createMany({
     data: rows,
     skipDuplicates: true,
   });
-  return result.count;
+  return result.count + orphanedOneOffs.length;
 }

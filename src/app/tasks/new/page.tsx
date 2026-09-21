@@ -27,6 +27,7 @@ export default async function NewTaskPage() {
         categories={categories}
         people={people}
         submitLabel="Add task"
+        allowAddAnother
         initial={{
           title: "",
           description: "",

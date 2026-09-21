@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Cadence, Priority } from "@prisma/client";
 import type { ActionState } from "@/actions/tasks";
 import { CADENCE_LABEL } from "@/lib/recurrence";
@@ -30,15 +31,59 @@ export function TaskForm({
   people,
   initial,
   submitLabel,
+  allowAddAnother = false,
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   categories: { id: string; name: string }[];
   people: { id: string; name: string | null; email: string }[];
   initial: TaskFormValues;
   submitLabel: string;
+  /** Adds a second submit that keeps the form open for the next task. */
+  allowAddAnother?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(action, {});
   const [cadence, setCadence] = useState<Cadence>(initial.cadence);
+
+  // React resets the form after a successful action, which returns every
+  // uncontrolled field to its defaultValue. The fields meant to carry over to
+  // the next task therefore have to be controlled.
+  const [sticky, setSticky] = useState({
+    categoryId: initial.categoryId,
+    priority: String(initial.priority),
+    assigneeId: initial.assigneeId,
+    interval: String(initial.interval),
+    anchorDay: String(initial.anchorDay ?? 1),
+    startDate: initial.startDate,
+    endDate: initial.endDate,
+  });
+  const bind = (key: keyof typeof sticky) => ({
+    value: sticky[key],
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setSticky((s) => ({ ...s, [key]: e.target.value })),
+  });
+
+  const titleRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const estimateRef = useRef<HTMLInputElement>(null);
+
+  // Everything added without leaving the page, so a batch shows its own trail.
+  const [added, setAdded] = useState<{ id: string; title: string }[]>([]);
+  const lastHandled = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!state.createdId || state.createdId === lastHandled.current) return;
+    lastHandled.current = state.createdId;
+
+    setAdded((prev) => [{ id: state.createdId!, title: state.createdTitle ?? "Task" }, ...prev]);
+
+    // Clear only what changes per task. Category, priority, owner, cadence and
+    // dates stay, because a batch is usually variations on one theme and
+    // retyping them is the slow part.
+    if (titleRef.current) titleRef.current.value = "";
+    if (descriptionRef.current) descriptionRef.current.value = "";
+    if (estimateRef.current) estimateRef.current.value = "";
+    titleRef.current?.focus();
+  }, [state.createdId, state.createdTitle]);
 
   const isWeekly = WEEKLY_CADENCES.includes(cadence);
   const isMonthly = MONTHLY_CADENCES.includes(cadence);
@@ -56,6 +101,7 @@ export function TaskForm({
           <input
             id="title"
             name="title"
+            ref={titleRef}
             required
             maxLength={200}
             defaultValue={initial.title}
@@ -71,6 +117,7 @@ export function TaskForm({
           <textarea
             id="description"
             name="description"
+            ref={descriptionRef}
             rows={5}
             defaultValue={initial.description}
             className="rc-textarea"
@@ -89,7 +136,7 @@ export function TaskForm({
             <select
               id="categoryId"
               name="categoryId"
-              defaultValue={initial.categoryId}
+              {...bind("categoryId")}
               className="rc-select"
             >
               <option value="">Uncategorised</option>
@@ -108,7 +155,7 @@ export function TaskForm({
             <select
               id="priority"
               name="priority"
-              defaultValue={initial.priority}
+              {...bind("priority")}
               className="rc-select"
             >
               <option value="URGENT">Urgent</option>
@@ -125,7 +172,7 @@ export function TaskForm({
             <select
               id="assigneeId"
               name="assigneeId"
-              defaultValue={initial.assigneeId}
+              {...bind("assigneeId")}
               className="rc-select"
             >
               <option value="">Anyone on marketing</option>
@@ -144,6 +191,7 @@ export function TaskForm({
             <input
               id="estimateMinutes"
               name="estimateMinutes"
+              ref={estimateRef}
               type="number"
               min={0}
               max={10000}
@@ -193,7 +241,7 @@ export function TaskForm({
               <select
                 id="anchorDay"
                 name="anchorDay"
-                defaultValue={String(initial.anchorDay ?? 1)}
+                {...bind("anchorDay")}
                 className="rc-select"
               >
                 {WEEKDAYS.map((d, i) => (
@@ -216,7 +264,7 @@ export function TaskForm({
                 type="number"
                 min={1}
                 max={31}
-                defaultValue={String(initial.anchorDay ?? 1)}
+                {...bind("anchorDay")}
                 className="rc-input"
               />
               <p className="rc-hint">Use 31 for the last day of the month.</p>
@@ -234,7 +282,7 @@ export function TaskForm({
                 type="number"
                 min={1}
                 max={52}
-                defaultValue={initial.interval}
+                {...bind("interval")}
                 className="rc-input"
               />
               <p className="rc-hint">
@@ -258,7 +306,7 @@ export function TaskForm({
               name="startDate"
               type="date"
               required
-              defaultValue={initial.startDate}
+              {...bind("startDate")}
               className="rc-input"
             />
           </div>
@@ -272,7 +320,7 @@ export function TaskForm({
                 id="endDate"
                 name="endDate"
                 type="date"
-                defaultValue={initial.endDate}
+                {...bind("endDate")}
                 className="rc-input"
               />
               <p className="rc-hint">Leave blank to keep it going indefinitely.</p>
@@ -289,7 +337,7 @@ export function TaskForm({
           </p>
         ) : null}
 
-        {state.ok ? (
+        {state.ok && !state.createdId ? (
           <p
             role="status"
             className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-success)] bg-[var(--color-success-soft)] px-4 py-3 text-[14px] text-[var(--color-success)]"
@@ -301,6 +349,52 @@ export function TaskForm({
         <button type="submit" disabled={pending} className="rc-btn rc-btn-primary rc-btn-lg mt-6 w-full">
           {pending ? "Saving…" : submitLabel}
         </button>
+
+        {allowAddAnother ? (
+          <>
+            {/* The button's own name and value go into the form data, so the
+                action knows which of the two was pressed. */}
+            <button
+              type="submit"
+              name="andAnother"
+              value="1"
+              disabled={pending}
+              className="rc-btn rc-btn-secondary rc-btn-lg mt-3 w-full"
+            >
+              {pending ? "Saving…" : "Save and add another"}
+            </button>
+            <p className="rc-hint">
+              Keeps the category, priority, owner, repeat and dates, clears the rest, and puts
+              the cursor back in the task name.
+            </p>
+          </>
+        ) : null}
+
+        {added.length > 0 ? (
+          <div
+            role="status"
+            className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-success)] bg-[var(--color-success-soft)] p-4"
+          >
+            <p className="t-small font-bold text-[var(--color-success)]">
+              Added {added.length} {added.length === 1 ? "task" : "tasks"}
+            </p>
+            <ul className="mt-2 space-y-1">
+              {added.slice(0, 6).map((t) => (
+                <li key={t.id}>
+                  <Link
+                    href={`/tasks/${t.id}`}
+                    className="t-caption underline decoration-dotted hover:text-[var(--color-fg-1)]"
+                  >
+                    {t.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {added.length > 6 ? (
+              <p className="t-caption mt-1">and {added.length - 6} more</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </form>
   );
