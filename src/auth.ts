@@ -32,6 +32,20 @@ const providers = [
     clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
     clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
     issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
+    // Link an Entra sign-in to an existing user with the same address instead
+    // of refusing with OAuthAccountNotLinked.
+    //
+    // Auth.js calls this "dangerous" because a provider that does not verify
+    // email addresses would let someone claim an existing account by signing
+    // up with its address. That risk does not apply here: sign-in is locked to
+    // the Right Click tenant by ALLOWED_TENANT_ID below, and inside a single
+    // Entra tenant the address on a token is assigned by an admin, not chosen
+    // by the person signing in.
+    //
+    // Without this, any user row that exists before its first SSO sign-in
+    // blocks that person permanently — seeded users, someone added by hand,
+    // or a row left behind by the local dev login.
+    allowDangerousEmailAccountLinking: true,
     authorization: { params: { scope: "openid profile email offline_access User.Read" } },
   }),
 ];
