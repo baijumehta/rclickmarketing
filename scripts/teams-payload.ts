@@ -29,25 +29,13 @@ const SAMPLE_LINK = "https://marketing.rclick.com";
 const SIMPLE_SCHEMA = {
   type: "object",
   properties: {
-    title: {
-      type: "string",
-      description: "One-line heading: who, and which day.",
-    },
-    text: {
-      type: "string",
-      description:
-        "The whole message including the title, markdown formatted. Map this alone if the flow only posts one field.",
-    },
-    body: {
-      type: "string",
-      description: "The message without the title, for when the flow adds its own heading.",
-    },
-    link: {
-      type: ["string", "null"],
-      description: "Back to the Marketing Desk. Null when no public URL is configured.",
-    },
+    title: { type: "string" },
+    html: { type: "string" },
+    text: { type: "string" },
+    body: { type: "string" },
+    link: { type: "string" },
   },
-  required: ["title", "text", "body"],
+  required: ["title", "html", "text", "body"],
 };
 
 const which = (process.argv[2] ?? "simple").toLowerCase();
@@ -60,15 +48,23 @@ console.log("\n--- Sample request body the app sends ---\n");
 console.log(JSON.stringify(payload, null, 2));
 
 if (format === "simple") {
-  console.log("\n--- Request Body JSON Schema for the Power Automate trigger ---\n");
+  console.log("\n--- Request Body JSON Schema (paste into the trigger's schema box) ---\n");
   console.log(JSON.stringify(SIMPLE_SCHEMA, null, 2));
-  console.log(
-    "\nIn the flow: paste the schema into 'When an HTTP request is received',",
-  );
-  console.log(
-    "then in 'Post message in a chat or channel' set Post as = Flow bot,",
-  );
-  console.log("Post in = Group chat, pick the chat, and set Message to the 'text' field.\n");
+
+  console.log("\n--- Setting up the flow ---\n");
+  console.log("1. Trigger: When an HTTP request is received.");
+  console.log("   Paste the SCHEMA above into 'Request Body JSON Schema'.");
+  console.log("   If you instead click 'Use sample payload to generate schema',");
+  console.log("   paste the SAMPLE BODY, not the schema. Pasting the schema into");
+  console.log("   that dialog makes Power Automate build a schema OF the schema,");
+  console.log("   which is why the tokens come out named 'type' and 'Item'.");
+  console.log("");
+  console.log("2. Action: Post message in a chat or channel.");
+  console.log("   Post in = Group chat, pick the chat.");
+  console.log("   Map the 'html' field into Message — that box takes HTML, and");
+  console.log("   Markdown would post with literal ** around every bold word.");
+  console.log("   Use the </> code view if the token will not drop into the");
+  console.log("   rich text editor cleanly.\n");
 } else {
   console.log(
     "\nThe Workflows templates already know this shape — no schema to paste.\n",

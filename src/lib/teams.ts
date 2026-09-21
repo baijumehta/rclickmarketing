@@ -84,13 +84,57 @@ function messageCardPayload(title: string, markdown: string, linkUrl?: string) {
 }
 
 /**
- * A flat body for a flow you built yourself. `text` is the whole message
- * including the title, so a flow that only maps one field still posts
- * something complete.
+ * Render the small Markdown subset the summary uses as HTML.
+ *
+ * Power Automate's "Post message in a chat or channel" Message field is a
+ * rich-text field that takes HTML, not Markdown — Markdown posted into it
+ * shows up with literal asterisks around every bold word. Only the syntax
+ * the summary actually produces is handled: bold, italics and bullets.
+ */
+export function markdownToHtml(markdown: string): string {
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const inline = (s: string) =>
+    escape(s)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/_(.+?)_/g, "<em>$1</em>");
+
+  const out: string[] = [];
+  let list: string[] = [];
+
+  const flushList = () => {
+    if (list.length === 0) return;
+    out.push(`<ul>${list.map((li) => `<li>${li}</li>`).join("")}</ul>`);
+    list = [];
+  };
+
+  for (const raw of markdown.split("\n")) {
+    const line = raw.trim();
+    if (line.startsWith("- ")) {
+      list.push(inline(line.slice(2)));
+      continue;
+    }
+    flushList();
+    if (line === "") continue;
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  flushList();
+
+  return out.join("");
+}
+
+/**
+ * A flat body for a flow you built yourself.
+ *
+ * Four renderings of the same message so the flow can map whichever one its
+ * destination wants: `html` for the Teams Message field, `text` for anything
+ * that renders Markdown, `body` for when the flow supplies its own heading.
  */
 function simplePayload(title: string, markdown: string, linkUrl?: string) {
   return {
     title,
+    html: `<p><strong>${title}</strong></p>${markdownToHtml(markdown)}`,
     text: `**${title}**\n\n${markdown}`,
     body: markdown,
     link: linkUrl ?? null,
