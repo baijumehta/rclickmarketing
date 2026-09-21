@@ -54,8 +54,40 @@ npm run dev
 Set `DEV_LOGIN="true"` to sign in with just an email address and skip Entra while developing.
 It is ignored whenever `NODE_ENV` is production, so it cannot leak to the deployment.
 
-`npm run db:seed` loads seven categories and eight recurring marketing tasks as a starting
-point — the monthly SEO check, the weekly spend review, the monthly report, and so on.
+`npm run db:seed` loads the standing marketing cadence — see below.
+
+`npm run db:clear` wipes activity back to a clean slate (time entries, occurrences, saved
+summaries, running timers, and anything tagged as demo data) while keeping people, roles,
+settings and categories. `npm run demo:day` fills today with a realistic eight-hour day for
+demonstrating the summary, and `npm run demo:day -- undo` takes it out again.
+
+## The standing cadence
+
+The seed is not filler. It is the recurring work a marketing function should be doing whether
+or not anyone asks, sized for one person: **28 tasks, about 7.4 hours a week** of recurring
+commitments before quarterly and annual work, leaving the rest of the week for campaigns and
+projects.
+
+| Cadence | Count | Examples |
+|---|---|---|
+| Weekly | 5 | Check every new lead reached a human · Test the contact and quote forms end to end · Review ad spend and pacing · Add negative keywords · Schedule social |
+| Every other week | 2 | Publish an article · Respond to reviews and check the Google Business Profile |
+| Monthly | 8 | SEO rankings · Performance report · Verify tracking and call/form alerts · Ask account managers for a client win · Newsletter · Broken links · Top landing pages |
+| Quarterly | 8 | Claim partner co-op and MDF funds · Case study · Core Web Vitals · Keyword strategy · Refresh best-performing articles · Campaign theme · Sales alignment |
+| Twice a year | 2 | Full content audit · Client satisfaction survey |
+| Annual | 3 | Marketing plan and budget · Renew domains and certificates · Refresh photography |
+
+Three of these earn their place specifically for an MSP and are the ones most often missing:
+
+- **Check every new lead reached a human**, weekly. Leads already paid for and then dropped
+  are the cheapest thing in marketing to fix.
+- **Test the contact and quote forms end to end**, weekly. Forms break silently after plugin
+  and DNS changes, and nobody finds out until a month of enquiries is gone.
+- **Claim partner co-op and MDF funds**, quarterly. Budget already earned through the
+  Microsoft and vendor programs, routinely left unclaimed because no one owns the deadline.
+
+Every task carries a description saying what good looks like, which is what makes a recurring
+task survivable three months later when nobody remembers how it was done.
 
 ### Checking the scheduling logic
 
